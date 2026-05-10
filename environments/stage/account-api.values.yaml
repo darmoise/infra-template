@@ -74,14 +74,14 @@ env:
 ingress:
   enabled: true
   className: traefik
-  host: stage.l5v.dev
+  host: stage.darmoise.example.com
   path: /
   pathType: Prefix
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   tls:
     enabled: true
-    secretName: stage-l5v-dev-tls
+    secretName: stage-darmoise-example-com-tls
 
 probes:
   enabled: true

@@ -1,5 +1,5 @@
 app:
-  name: easychat-service
+  name: account-api
 
 replicaCount: 1
 
@@ -30,7 +30,7 @@ secret:
 ingress:
   enabled: true
   className: nginx
-  host: dev.l5v.dev
+  host: dev.darmoise.example.com
   path: /
   pathType: Prefix
   annotations: {}

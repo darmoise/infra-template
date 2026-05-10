@@ -4,7 +4,7 @@ Dev stack:
 
 - Traefik from external `traefik/traefik` chart
 - Postgres from local chart `helm/postgres`
-- account-api from local chart `helm/easychat-service`
+- account-api from local chart `helm/account-api`
 
 Secrets are applied before Helmfile via Ansible Vault.
 
@@ -49,5 +49,5 @@ sudo env KUBECONFIG=/etc/rancher/k3s/k3s.yaml IMAGE_TAG=$IMAGE_TAG helmfile -f h
 ```bash
 sudo kubectl -n traefik get pods,svc
 sudo kubectl -n easychat-dev get pods,svc,ingress
-curl http://dev.l5v.dev/actuator/health
+curl http://dev.darmoise.example.com/actuator/health
 ```

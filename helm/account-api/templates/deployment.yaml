@@ -13,7 +13,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .Values.app.name }}
+        app: f{{ .Values.app.name }}
     spec:
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:

@@ -31,7 +31,7 @@ releases:
 
   - name: account-api
     namespace: easychat-dev
-    chart: ./helm/easychat-service
+    chart: ./helm/account-api
     needs:
       - traefik/traefik
       - easychat-dev/postgres

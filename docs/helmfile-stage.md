@@ -6,7 +6,7 @@ Stage is a separate Kubernetes namespace and app/database stack.
 
 ```text
 namespace: easychat-stage
-host: stage.l5v.dev
+host: stage.darmoise.example.com
 postgres release: postgres
 account-api release: account-api
 ```
@@ -51,7 +51,7 @@ sudo env KUBECONFIG=/etc/rancher/k3s/k3s.yaml IMAGE_TAG=$IMAGE_TAG ./scripts/dep
 sudo kubectl -n easychat-stage get pods,svc,ingress
 sudo kubectl -n easychat-stage rollout status statefulset/postgres
 sudo kubectl -n easychat-stage rollout status deployment/account-api
-curl http://stage.l5v.dev/actuator/health
+curl http://stage.darmoise.example.com/actuator/health
 ```
 
 ## Notes

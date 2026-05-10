@@ -19,6 +19,6 @@ env:
 ingress:
   enabled: true
   className: nginx
-  host: stage.l5v.dev
+  host: stage.darmoise.example.com
   path: /storage
   pathType: Prefix

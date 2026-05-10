@@ -1,0 +1,39 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local env / secrets
+.env
+.env.*
+*.token
+*.key
+*.pem
+*.crt
+*.p12
+*.kubeconfig
+
+# Do not commit real Kubernetes secrets
+secrets/**/*.secret.yaml
+
+# But keep safe templates in git
+!secrets/**/*.secret.template.yaml
+!secrets/**/*.secret.example.yaml
+
+# Helm local artifacts
+*.tgz
+charts/
+Chart.lock
+
+# Terraform / Ansible optional later
+.terraform/
+*.tfstate
+*.tfstate.*
+*.retry
+
+# Logs / temp
+*.log
+tmp/
+temp/
