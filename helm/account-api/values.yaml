@@ -30,7 +30,7 @@ secret:
 ingress:
   enabled: true
   className: nginx
-  host: dev.darmoise.example.com
+  host: dev.darmoise.github.io
   path: /
   pathType: Prefix
   annotations: {}

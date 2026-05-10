@@ -49,5 +49,5 @@ sudo env KUBECONFIG=/etc/rancher/k3s/k3s.yaml IMAGE_TAG=$IMAGE_TAG helmfile -f h
 ```bash
 sudo kubectl -n traefik get pods,svc
 sudo kubectl -n easychat-dev get pods,svc,ingress
-curl http://dev.darmoise.example.com/actuator/health
+curl http://dev.darmoise.github.io/actuator/health
 ```

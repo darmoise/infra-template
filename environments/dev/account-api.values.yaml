@@ -71,7 +71,7 @@ env:
 ingress:
   enabled: true
   className: traefik
-  host: dev.darmoise.example.com
+  host: dev.darmoise.github.io
   path: /
   pathType: Prefix
   annotations:

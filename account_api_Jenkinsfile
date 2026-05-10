@@ -1,0 +1,192 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  environment {
+    IMAGE_REPO = 'ghcr.io/darmoise/account-api'
+
+    INFRA_REPO = 'https://github.com/darmoise/infra-template.git'
+    INFRA_BRANCH = 'main'
+
+    KUBECONFIG_PATH = '/etc/rancher/k3s/k3s.yaml'
+    DEV_HELMFILE = 'helmfile.dev.yaml'
+  }
+
+  stages {
+    stage('Checkout app') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Resolve image tag') {
+      steps {
+        script {
+          env.APP_VERSION = sh(
+            script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout',
+            returnStdout: true
+          ).trim()
+
+          env.GIT_SHA = sh(
+            script: 'git rev-parse --short=12 HEAD',
+            returnStdout: true
+          ).trim()
+
+          def rawTag = "${env.APP_VERSION}-${env.GIT_SHA}"
+
+          env.IMAGE_TAG = rawTag
+            .toLowerCase()
+            .replaceAll('[^a-z0-9_.-]', '-')
+
+          if (!(env.IMAGE_TAG ==~ /^[a-z0-9_.-]+$/)) {
+            error("Invalid IMAGE_TAG: ${env.IMAGE_TAG}")
+          }
+
+          echo "APP_VERSION=${env.APP_VERSION}"
+          echo "GIT_SHA=${env.GIT_SHA}"
+          echo "IMAGE_TAG=${env.IMAGE_TAG}"
+          echo "IMAGE=${env.IMAGE_REPO}:${env.IMAGE_TAG}"
+        }
+      }
+    }
+
+    stage('Test') {
+      steps {
+        sh 'mvn test'
+      }
+    }
+
+    stage('Package') {
+      steps {
+        sh 'mvn package -DskipTests'
+      }
+    }
+
+    stage('Docker login') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'ghcr-darmoise',
+            usernameVariable: 'GHCR_USER',
+            passwordVariable: 'GHCR_TOKEN'
+          )
+        ]) {
+          sh '''
+            echo "${GHCR_TOKEN}" | docker login ghcr.io \
+              -u "${GHCR_USER}" \
+              --password-stdin
+          '''
+        }
+      }
+    }
+
+    stage('Build image') {
+      steps {
+        sh '''
+          docker build \
+            -f ops/Dockerfile \
+            -t "${IMAGE_REPO}:${IMAGE_TAG}" \
+            .
+        '''
+      }
+    }
+
+    stage('Push image') {
+      steps {
+        sh '''
+          docker push "${IMAGE_REPO}:${IMAGE_TAG}"
+        '''
+      }
+    }
+
+    stage('Checkout infra') {
+        steps {
+            dir('infra-template') {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/darmoise/infra-template.git',
+                        credentialsId: 'github-darmoise'
+                    ]]
+                ])
+            }
+        }
+    }
+
+    stage('Deploy dev diff') {
+      steps {
+        dir('infra-template') {
+          sh '''
+            KUBECONFIG="${KUBECONFIG_PATH}" IMAGE_TAG="${IMAGE_TAG}" \
+              helmfile -f "${DEV_HELMFILE}" diff
+          '''
+        }
+      }
+    }
+
+    stage('Deploy dev') {
+      steps {
+        dir('infra-template') {
+          sh '''
+            KUBECONFIG="${KUBECONFIG_PATH}" IMAGE_TAG="${IMAGE_TAG}" \
+              helmfile -f "${DEV_HELMFILE}" apply
+          '''
+        }
+      }
+    }
+
+    stage('Verify dev') {
+      steps {
+        sh '''
+          kubectl --kubeconfig="${KUBECONFIG_PATH}" \
+            -n easychat-dev rollout status deployment/account-api
+
+          echo "Deployed image:"
+          kubectl --kubeconfig="${KUBECONFIG_PATH}" \
+            -n easychat-dev get deployment account-api \
+            -o jsonpath='{.spec.template.spec.containers[0].image}{"\\n"}'
+
+          curl -fsS http://dev.darmoise.github.io/actuator/health
+        '''
+      }
+    }
+
+    stage('Publish build metadata') {
+      steps {
+        sh '''
+          echo "${IMAGE_TAG}" > image-tag.txt
+          echo "${IMAGE_REPO}:${IMAGE_TAG}" > image.txt
+          echo "${GIT_SHA}" > git-sha.txt
+          echo "${APP_VERSION}" > app-version.txt
+        '''
+
+        archiveArtifacts(
+          artifacts: 'image-tag.txt,image.txt,git-sha.txt,app-version.txt',
+          fingerprint: true
+        )
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Build and dev deploy completed: ${IMAGE_REPO}:${IMAGE_TAG}"
+    }
+
+    failure {
+      echo "Build or dev deploy failed"
+    }
+
+    always {
+      sh '''
+        docker logout ghcr.io || true
+      '''
+    }
+  }
+}
