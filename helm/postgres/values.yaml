@@ -1,0 +1,18 @@
+app:
+  name: postgres
+
+image:
+  repository: postgres
+  tag: 16-alpine
+  pullPolicy: IfNotPresent
+
+service:
+  port: 5432
+
+postgres:
+  database: postgres
+  user: username
+  secretName: postgres-secret
+
+storage:
+  size: 2Gi

@@ -1,0 +1,15 @@
+# Copy to vault.yml, fill real STAGE values, then encrypt:
+# ansible-vault encrypt ansible/group_vars/stage/vault.yml
+
+postgres_password: "CHANGE_ME"
+spring_datasource_password: "CHANGE_ME" # must match postgres_password unless DB user was changed manually
+
+spring_mail_password: "CHANGE_ME"
+jwt_secret: "CHANGE_ME"
+tx_processor_secret_key: "CHANGE_ME"
+encryption_key: "CHANGE_ME"
+rpc_helius_api_key: "CHANGE_ME"
+rpc_alchemy_api_key: "CHANGE_ME"
+
+ghcr_username: "darmoise"
+ghcr_token: "CHANGE_ME_GHCR_READ_TOKEN"

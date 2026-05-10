@@ -1,0 +1,153 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  parameters {
+    string(
+      name: 'IMAGE_TAG',
+      defaultValue: '',
+      description: 'Immutable image tag to promote to stage, e.g. 0.0.19-snapshot-e2bdbe585d9b'
+    )
+  }
+
+  environment {
+    IMAGE_REPO = 'ghcr.io/darmoise/account-api'
+    KUBECONFIG_PATH = '/etc/rancher/k3s/k3s.yaml'
+    HELMFILE = 'helmfile.stage.yaml'
+    GHCR_CREDENTIALS_ID = 'ghcr-darmoise'
+    ANSIBLE_VAULT_CREDENTIALS_ID = 'ansible-vault-password'
+  }
+
+  stages {
+    stage('Validate input') {
+      steps {
+        script {
+          def tag = params.IMAGE_TAG?.trim()
+
+          if (!tag) {
+            error('IMAGE_TAG is required')
+          }
+
+          if (!(tag ==~ /^[a-z0-9][a-z0-9._-]{0,127}$/)) {
+            error("Invalid IMAGE_TAG: ${tag}")
+          }
+
+          env.IMAGE_TAG = tag
+        }
+      }
+    }
+
+    stage('Checkout infra') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Preflight tools') {
+      steps {
+        sh '''
+          set -euo pipefail
+          command -v kubectl
+          command -v helm
+          command -v helmfile
+          command -v ansible-playbook
+          command -v docker
+          kubectl --kubeconfig="${KUBECONFIG_PATH}" get namespace default >/dev/null
+        '''
+      }
+    }
+
+    stage('Show release target') {
+      steps {
+        sh '''
+          set -euo pipefail
+          echo "Promoting image: ${IMAGE_REPO}:${IMAGE_TAG}"
+          echo "Target namespace: easychat-stage"
+          echo "Helmfile: ${HELMFILE}"
+        '''
+      }
+    }
+
+    stage('Check image exists') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: env.GHCR_CREDENTIALS_ID, usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN')]) {
+          sh '''
+            set -euo pipefail
+            set +x
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+            set -x
+            docker manifest inspect "${IMAGE_REPO}:${IMAGE_TAG}" >/dev/null
+            docker logout ghcr.io >/dev/null 2>&1 || true
+          '''
+        }
+      }
+    }
+
+    stage('Apply secrets') {
+      steps {
+        withCredentials([file(credentialsId: env.ANSIBLE_VAULT_CREDENTIALS_ID, variable: 'ANSIBLE_VAULT_PASSWORD_FILE')]) {
+          sh '''
+            set -euo pipefail
+            KUBECONFIG="${KUBECONFIG_PATH}" \
+            ansible-playbook \
+              -i ansible/inventories/stage/hosts.ini \
+              ansible/playbooks/apply-secrets.yml \
+              -e env=stage \
+              --vault-password-file "$ANSIBLE_VAULT_PASSWORD_FILE"
+          '''
+        }
+      }
+    }
+
+    stage('Helmfile diff') {
+      steps {
+        sh '''
+          set -euo pipefail
+          KUBECONFIG="${KUBECONFIG_PATH}" IMAGE_TAG="${IMAGE_TAG}" \
+            helmfile -f "${HELMFILE}" diff
+        '''
+      }
+    }
+
+    stage('Deploy stage') {
+      steps {
+        sh '''
+          set -euo pipefail
+          KUBECONFIG="${KUBECONFIG_PATH}" IMAGE_TAG="${IMAGE_TAG}" \
+            helmfile -f "${HELMFILE}" apply
+        '''
+      }
+    }
+
+    stage('Verify') {
+      steps {
+        sh '''
+          set -euo pipefail
+          kubectl --kubeconfig="${KUBECONFIG_PATH}" -n easychat-stage rollout status statefulset/postgres --timeout=300s
+          kubectl --kubeconfig="${KUBECONFIG_PATH}" -n easychat-stage rollout status deployment/account-api --timeout=300s
+
+          DEPLOYED_IMAGE="$(kubectl --kubeconfig="${KUBECONFIG_PATH}" -n easychat-stage get deployment account-api \
+            -o jsonpath='{.spec.template.spec.containers[0].image}')"
+
+          echo "Deployed image: ${DEPLOYED_IMAGE}"
+          test "${DEPLOYED_IMAGE}" = "${IMAGE_REPO}:${IMAGE_TAG}"
+        '''
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Stage deploy completed: ${IMAGE_REPO}:${IMAGE_TAG}"
+    }
+
+    failure {
+      echo "Stage deploy failed for tag: ${params.IMAGE_TAG}"
+    }
+  }
+}

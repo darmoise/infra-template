@@ -1,0 +1,29 @@
+helmDefaults:
+  wait: true
+  timeout: 600
+  atomic: true
+  cleanupOnFail: true
+  createNamespace: true
+
+releases:
+  - name: postgres
+    namespace: easychat-stage
+    chart: ./helm/postgres
+    labels:
+      env: stage
+      component: database
+    values:
+      - environments/stage/postgres.values.yaml
+
+  - name: account-api
+    namespace: easychat-stage
+    chart: ./helm/easychat-service
+    needs:
+      - easychat-stage/postgres
+    labels:
+      env: stage
+      component: backend
+      app: account-api
+    values:
+      - environments/stage/account-api.values.yaml
+      - environments/stage/account-api.image.values.yaml.gotmpl

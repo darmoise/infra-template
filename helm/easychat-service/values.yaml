@@ -1,0 +1,62 @@
+app:
+  name: easychat-service
+
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: alpine
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-credentials
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+container:
+  port: 8080
+
+configMapName: ""
+
+env: {}
+
+secret:
+  enabled: false
+  name: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  host: dev.l5v.dev
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
+
+probes:
+  enabled: false
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    failureThreshold: 6
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 60
+    periodSeconds: 20
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 768Mi
+
+revisionHistoryLimit: 3

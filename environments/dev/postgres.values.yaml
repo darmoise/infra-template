@@ -1,0 +1,10 @@
+app:
+  name: postgres
+
+postgres:
+  database: postgres
+  user: username
+  secretName: postgres-secret
+
+storage:
+  size: 2Gi

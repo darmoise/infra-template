@@ -1,0 +1,91 @@
+app:
+  name: account-api
+
+image:
+  repository: ghcr.io/darmoise/account-api
+  tag: latest
+  pullPolicy: Always
+
+service:
+  port: 8080
+  targetPort: 8080
+
+container:
+  port: 8080
+
+configMapName: account-api-config
+
+secret:
+  enabled: true
+  name: account-api-secret
+
+env:
+  SERVER_PORT: "8080"
+  SPRING_APPLICATION_NAME: "account-api"
+  SPRING_JPA_SHOW_SQL: "false"
+
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/postgres"
+  SPRING_DATASOURCE_USERNAME: "username"
+  SPRING_DATASOURCE_HIKARI_MIN_IDLE: "1"
+  SPRING_DATASOURCE_HIKARI_MIN_POOL_SIZE: "10"
+  SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT: "60000"
+  SPRING_DATASOURCE_HIKARI_MAX_LIFETIME: "300000"
+  SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT: "30000"
+
+  SPRING_MAIL_ENABLED: "false"
+  SPRING_MAIL_HOST: "smtp.yandex.ru"
+  SPRING_MAIL_PORT: "465"
+  SPRING_MAIL_USERNAME: "CHANGE_ME_NON_SECRET_OR_MOVE_TO_SECRET"
+  SPRING_MAIL_SMTP_AUTH: "true"
+  SPRING_MAIL_SMTP_STARTTLS_ENABLE: "true"
+  SPRING_MAIL_SMTP_STARTTLS_REQUIRED: "true"
+  SPRING_MAIL_SMTP_CONNECTION_TIMEOUT: "5000"
+  SPRING_MAIL_SMTP_TIMEOUT: "5000"
+  SPRING_MAIL_SMTP_WRITE_TIMEOUT: "5000"
+
+  JWT_EXPIRATION: "3600000"
+  JWT_REFRESH_EXPIRATION: "604800000"
+
+  COMMON_CARDS_PER_CYCLE: "54"
+  COMMON_BASE_PERIOD_MS: "1800000"
+  COMMON_PERIOD_INCREMENT_MS: "600000"
+  COMMON_FULL_DECK_SIZE: "54"
+
+  TX_PROCESSOR_ENABLED: "false"
+  TX_PROCESSOR_DEPOSIT_DELAY: "15000"
+  TX_PROCESSOR_WITHDRAW_DELAY: "20000"
+  TX_PROCESSOR_DEPOSIT_TX_LIMIT: "100"
+
+  COLLECTION_CARD_ADDRESS: "3coz4Y8fYf7JdBmYtEa46TdqMqkuUq6LkNAwqVB3NeYX"
+  COLLECTION_NFT_ADDRESS: "3coz4Y8fYf7JdBmYtEa46TdqMqkuUq6LkNAwqVB3NeYX"
+  MIN_BALANCE_FOR_FEES: "1000000"
+  REFILL_AMOUNT_IF_LOW: "0"
+  RPC_CLUSTERS: "ALCHEMY"
+
+  STORAGE_URL: "http://content-storage:8080"
+
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_COMPONENTS: "always"
+  MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+
+ingress:
+  enabled: true
+  className: traefik
+  host: dev.l5v.dev
+  path: /
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    secretName: dev-l5v-dev-tls
+
+probes:
+  enabled: true
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 768Mi

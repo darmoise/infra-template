@@ -1,0 +1,43 @@
+repositories:
+  - name: traefik
+    url: https://traefik.github.io/charts
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  atomic: true
+  cleanupOnFail: true
+  createNamespace: true
+
+releases:
+  - name: traefik
+    namespace: traefik
+    chart: traefik/traefik
+    version: 39.0.9
+    labels:
+      env: dev
+      component: ingress
+    values:
+      - environments/dev/traefik.values.yaml
+
+  - name: postgres
+    namespace: easychat-dev
+    chart: ./helm/postgres
+    labels:
+      env: dev
+      component: database
+    values:
+      - environments/dev/postgres.values.yaml
+
+  - name: account-api
+    namespace: easychat-dev
+    chart: ./helm/easychat-service
+    needs:
+      - traefik/traefik
+      - easychat-dev/postgres
+    labels:
+      env: dev
+      component: backend
+      app: account-api
+    values:
+      - environments/dev/account-api.values.yaml

@@ -1,0 +1,12 @@
+{{- if .Values.env }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapName | default (printf "%s-config" .Values.app.name) }}
+  labels:
+    app: {{ .Values.app.name }}
+data:
+{{- range $key, $value := .Values.env }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}

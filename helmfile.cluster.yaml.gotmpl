@@ -1,0 +1,24 @@
+helmDefaults:
+  wait: true
+  timeout: 600
+  atomic: true
+  cleanupOnFail: true
+
+releases:
+  - name: cert-manager
+    namespace: cert-manager
+    createNamespace: true
+    chart: oci://quay.io/jetstack/charts/cert-manager
+    version: v1.20.2
+    values:
+      - crds:
+          enabled: true
+
+  - name: cluster-issuers
+    namespace: cert-manager
+    chart: helm/cluster-issuers
+    needs:
+      - cert-manager/cert-manager
+    values:
+      - email: {{ requiredEnv "LE_EMAIL" | quote }}
+        ingressClassName: traefik
